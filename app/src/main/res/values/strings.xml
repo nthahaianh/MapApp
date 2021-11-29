@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">MapApp</string>
+    <string name="map_goal">Address</string>
+    <string name="map_submit">Submit</string>
+    <string name="main_notification">Check internet connection and permission</string>
+    <string name="main_reload">Reload</string>
+</resources>

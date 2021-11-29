@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.mapapp">
+
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+
+    <application
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MapApp">
+
+        <meta-data android:name="com.here.android.maps.appid" android:value="FABdkWdNtptAJSeUWkYD"/>
+        <meta-data android:name="com.here.android.maps.apptoken" android:value="Dh5nTqt6-NfW-d4EPjpVyQ"/>
+        <meta-data
+            android:name="com.here.android.maps.license.key"
+            android:value="gti2LIZAFXNznZSFUnotqBoMOtJIf5ydoWC2Lx8A0v3+ttJ4boBzvk21hnFygApmPOqPXjDD2GZCgV6oCdjFECxyTAvZMY6dsQu1fFUjQV95PIIkI4InDXZ+UaodMzzaAfuYXR5541d6z0uaR4isEJKlU/00hDvM3DMHWJdakYQLebD8qH9ADZBJMK6McWJqBf4OfrJUVHxK2tvgthdC9rw1iqqSJ1gc6Io9paSHmaNP870QxWviZW+FD4UtAW9qSXY9XvbT+sNkawiMcz6caCEwNPwnyOE9gNKNlshsTGg3wypZEiIh9/iZ5qbAoJulqPujUxiLXM+jUzS1Lb5uYHna+9+hy4TVXQQQdS9LCq4A7eYE7LT9vex/dDcUGaDWkifIMcSmD5otd5XS4C7CXQqPas6v/gu+XpIha38ly8BJKjXQmHYjINU2yLR8W7/j5sLTPbAWqfPFjVpHotiRksP8epzDOBr4YyagZ9HWHj0I5mW+/7TdWm9qJ9LKu2v5JPPXlwQ1az/+82wwkwtqa/mR/bgN/fg96Fmp28oc6NHdmDbp2KIoXjrizcCNjxYlxJaPsHmU74FU7AuAoC3eyUcTk8e+fbJIMb3aCJHD/K1kEn6zz6/3tRZquAUNjtEdt//5zQ/IYZztYJ1z3fAHkZZU9uqv5PgxLxr0oAnVDQY="/>
+        <service
+            android:name="com.here.android.mpa.service.MapService"
+            android:label="HereMapService">
+            <intent-filter>
+                <action android:name="com.here.android.mpa.service.MapService.v3" />
+            </intent-filter>
+        </service>
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
