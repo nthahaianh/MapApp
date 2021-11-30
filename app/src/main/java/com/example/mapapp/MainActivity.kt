@@ -77,7 +77,9 @@ class MainActivity : AppCompatActivity() {
                 2 -> tvTransport.text = "Transport: Pedestrian"
             }
         })
-        map_tvAddress.text = map_tvAddress.text
+        mMainViewModel!!.resultAddress.observe(this,{
+            map_tvAddress.text = it
+        })
         mMainViewModel!!.resultWayShort.observe(this, {
             way_shortest.text = it
         })
@@ -90,6 +92,7 @@ class MainActivity : AppCompatActivity() {
         map_ivNavigation.setOnClickListener {
             mMainViewModel!!.isShowAddress.value = false
             mMainViewModel!!.isShowSearch.value = false
+            mMainViewModel!!.isShowWay.value = false
             if (mMainViewModel!!.getAddressStart() == null) {
                 Toast.makeText(baseContext, "Please get current position", Toast.LENGTH_SHORT)
                     .show()
@@ -203,7 +206,7 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location ->
                 if (location != null) {
-                    mMainViewModel!!.setAddressStart("Your position")
+                    mMainViewModel!!.setAddressStart("lat/lng: (${location.latitude},${location.longitude})\nYour position")
                     mMainViewModel!!.addMyLocationMarker(location.latitude, location.longitude)
                 } else {
                     Log.e("HEREmap", "My location null")

@@ -25,6 +25,7 @@ class MapViewModel : ViewModel() {
     var mapRouteList: MutableLiveData<ArrayList<MapObject>> = MutableLiveData()
     var resultWayShort: MutableLiveData<String> = MutableLiveData()
     var resultOtherWay: MutableLiveData<String> = MutableLiveData()
+    var resultAddress: MutableLiveData<String> = MutableLiveData()
     private var startPoint: LatLng? = null
     private var endPoint: LatLng? = null
     private var mapRoute: MapRoute? = null
@@ -41,6 +42,7 @@ class MapViewModel : ViewModel() {
         addressDestination = "Hanoi"
         resultWayShort.value = ""
         resultOtherWay.value = ""
+        resultAddress.value = ""
         transport.value = 0
         mapRouteList.value = ArrayList()
     }
@@ -118,6 +120,7 @@ class MapViewModel : ViewModel() {
                 isShowAddress.value = true
                 isShowSearch.value = false
                 isShowWay.value = false
+                resultAddress.value = addressDestination
             }
         }
     }
@@ -174,8 +177,6 @@ class MapViewModel : ViewModel() {
     }
 
     fun reversePosition() {
-        destinationMarker?.let { map.removeMapObject(it) }
-        myLocationMarker?.let { map.removeMapObject(it) }
         val mid = endPoint
         endPoint = startPoint
         startPoint = mid
