@@ -3,10 +3,12 @@ package com.example.mapapp
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.drawable.ColorDrawable
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.util.Log
 import android.view.Gravity
@@ -16,7 +18,6 @@ import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
@@ -77,18 +78,24 @@ class MainActivity : AppCompatActivity() {
         map_ivSearch.setOnClickListener {
             map_llAddress.visibility = View.GONE
             map_llSearch.visibility = View.VISIBLE
+            scrollView.visibility = View.GONE
         }
         map_btnSearch.setOnClickListener {
             if (map_etSearch.text.toString() == "") {
                 Toast.makeText(baseContext, "Address is empty", Toast.LENGTH_SHORT).show()
             } else {
-                map_llAddress.visibility = View.GONE
-                map_llSearch.visibility = View.GONE
-                searchLocation(map_etSearch.text.toString())
+                if (checkConnectivity()) {
+                    map_llAddress.visibility = View.GONE
+                    map_llSearch.visibility = View.GONE
+                    scrollView.visibility = View.GONE
+                    searchLocation(map_etSearch.text.toString())
+                }
             }
         }
         map_ivMyLocation.setOnClickListener {
             map_llAddress.visibility = View.GONE
+            map_llSearch.visibility = View.GONE
+            scrollView.visibility = View.GONE
             getCurrentUserLocation()
         }
     }
@@ -106,8 +113,8 @@ class MainActivity : AppCompatActivity() {
                 addDestinationMarker(latHN, lngHN)
                 mapFragment.mapGesture!!.addOnGestureListener(object : OnGestureListenerAdapter() {
                     override fun onTapEvent(p: PointF): Boolean {
+                        cleanWay()
                         val position = map.pixelToGeo(p)
-                        map_llAddress.visibility = View.GONE
                         if (position != null) {
                             addDestinationMarker(position.latitude, position.longitude)
                             changeGeotoAdd(position)
@@ -116,13 +123,12 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onLongPressEvent(p: PointF): Boolean {
-                        Log.e("Long press", "---")
+                        cleanWay()
                         val position = map.pixelToGeo(p)
                         if (position != null) {
                             addDestinationMarker(position.latitude, position.longitude)
                             changeGeotoAdd(position)
                         }
-                        map_llAddress.visibility = View.VISIBLE
                         return false
                     }
                 }, 3, true)
@@ -142,8 +148,93 @@ class MainActivity : AppCompatActivity() {
                 endPoint = LatLng(position.latitude, position.longitude)
                 addressDestination = "${location?.address}"
                 map_tvAddress.text = "$endPoint\n $addressDestination"
+                map_llAddress.visibility = View.VISIBLE
+                map_llSearch.visibility = View.GONE
+                scrollView.visibility = View.GONE
             }
         }
+    }
+
+    // Check internet
+    private fun checkConnectivity(): Boolean {
+        val connectivityManager =
+            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val info = connectivityManager.activeNetworkInfo
+        return if (info == null || !info.isConnected || !info.isAvailable) {
+            Toast.makeText(baseContext, "No internet connection", Toast.LENGTH_SHORT).show()
+            false
+        } else {
+            true
+        }
+        return false
+    }
+
+    // Request user for location access
+    private fun requestPermissions() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+            != PackageManager.PERMISSION_GRANTED
+            && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ),
+                REQUEST_CODE_LOCATION_PERMISSION
+            )
+        }
+    }
+
+    // Call back function for location access
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String?>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQUEST_CODE_LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && permissions[0] == Manifest.permission.ACCESS_FINE_LOCATION) {
+                    if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                        Log.e("log", "1")
+                    } else {
+                        Log.e("log", "2")
+                    }
+                }
+            }
+        }
+    }
+
+    // Get current user location
+    private fun getCurrentUserLocation() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(baseContext, "Please allow permission", Toast.LENGTH_SHORT).show()
+            return
+        }
+        fusedLocationClient.lastLocation
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    addressStart = "Your position"
+                    addMyLocationMarker(location.latitude, location.longitude)
+                } else {
+                    Log.e("HEREmap", "My location null")
+                }
+            }
     }
 
     //search location by string
@@ -162,66 +253,33 @@ class MainActivity : AppCompatActivity() {
                             it.longitude
                         )
                     }
-                    addressDestination = "Result search: $query"
+                    addressDestination = "${result.location!!.address}"
                 } else {
-                    Toast.makeText(this, "No result", Toast.LENGTH_SHORT)
-                        .show()
+                    Log.e("search", "No result")
                 }
             }
         }
     }
 
-    // Request user for location access
-    private fun requestPermissions() {
-        if (ContextCompat.checkSelfPermission(
-                applicationContext, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_CODE_LOCATION_PERMISSION
-            )
-        } else {
+    private fun addMyLocationMarker(lat: Double, lng: Double) {
+        startPoint = LatLng(lat, lng)
+        if (myLocationMarker != null) {
+            map.removeMapObject(myLocationMarker!!)
         }
+        myLocationMarker = MapMarker(GeoCoordinate(lat, lng))
+        map.addMapObject(myLocationMarker!!)
+        map.setCenter(GeoCoordinate(lat, lng), Map.Animation.NONE)
     }
 
-    // Call back function for location access
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String?>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // check for user action
-        if (requestCode == REQUEST_CODE_LOCATION_PERMISSION && grantResults.size > 0) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            } else {
-            }
+    private fun addDestinationMarker(lat: Double, lng: Double) {
+        if (destinationMarker != null) {
+            map.removeMapObject(destinationMarker!!)
         }
-    }
-
-    // Get current user location
-    private fun getCurrentUserLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        Log.e("HEREmap", "before get location")
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location ->
-                if (location != null) {
-                    addressStart = "Your position"
-                    addMyLocationMarker(location.latitude, location.longitude)
-                } else {
-                    Log.e("HEREmap", "My location null")
-                }
-            }
+        endPoint = LatLng(lat, lng)
+        destinationMarker = MapMarker()
+        destinationMarker?.coordinate = GeoCoordinate(lat, lng)
+        map.addMapObject(destinationMarker!!)
+        map.setCenter(GeoCoordinate(lat, lng), Map.Animation.NONE)
     }
 
     //show dialog find the way
@@ -283,36 +341,14 @@ class MainActivity : AppCompatActivity() {
             addMyLocationMarker(startPoint!!.latitude, startPoint!!.longitude)
             addDestinationMarker(endPoint!!.latitude, endPoint!!.longitude)
         }
-        btnCancel.setOnClickListener { dialog.hide() }
+        btnCancel.setOnClickListener { dialog.dismiss() }
         btnOk.setOnClickListener {
             cleanWay()
             createRoute(0)
             createRoute(1)
-            dialog.hide()
+            dialog.dismiss()
         }
         dialog.show()
-    }
-
-    private fun addMyLocationMarker(lat: Double, lng: Double) {
-        startPoint = LatLng(lat, lng)
-        if (myLocationMarker != null) {
-            map.removeMapObject(myLocationMarker!!)
-        }
-        myLocationMarker = MapMarker()
-        myLocationMarker?.coordinate = GeoCoordinate(lat, lng)
-        map.addMapObject(myLocationMarker!!)
-        map.setCenter(GeoCoordinate(lat, lng), Map.Animation.NONE)
-    }
-
-    private fun addDestinationMarker(lat: Double, lng: Double) {
-        if (destinationMarker != null) {
-            map.removeMapObject(destinationMarker!!)
-        }
-        endPoint = LatLng(lat, lng)
-        destinationMarker = MapMarker()
-        destinationMarker?.coordinate = GeoCoordinate(lat, lng)
-        map.addMapObject(destinationMarker!!)
-        map.setCenter(GeoCoordinate(lat, lng), Map.Animation.NONE)
     }
 
     //Draw the way
@@ -322,7 +358,7 @@ class MainActivity : AppCompatActivity() {
             RouteWaypoint(
                 GeoCoordinate(
                     startPoint!!.latitude,
-                    endPoint!!.longitude
+                    startPoint!!.longitude
                 )
             )
         )
@@ -402,9 +438,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatTime(s: Int): String {
+    private fun formatTime(string: Int): String {
         var result = ""
-        var second = s
+        var second = string
         val hours = second / 3600
         second -= hours * 3600
         val minutes = second / 60
