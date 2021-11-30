@@ -15,11 +15,9 @@ import com.here.android.mpa.mapping.Map
 import com.here.android.mpa.routing.*
 import com.here.android.mpa.search.ErrorCode
 import com.here.android.mpa.search.GeocodeRequest
-import com.here.android.mpa.search.Location
 import com.here.android.mpa.search.ReverseGeocodeRequest
 
 class MapViewModel : ViewModel() {
-
     var isShowAddress: MutableLiveData<Boolean> = MutableLiveData()
     var isShowWay: MutableLiveData<Boolean> = MutableLiveData()
     var isShowSearch: MutableLiveData<Boolean> = MutableLiveData()
@@ -27,7 +25,6 @@ class MapViewModel : ViewModel() {
     var mapRouteList: MutableLiveData<ArrayList<MapObject>> = MutableLiveData()
     var resultWayShort: MutableLiveData<String> = MutableLiveData()
     var resultOtherWay: MutableLiveData<String> = MutableLiveData()
-//    var vmListSearch: MutableLiveData<MutableList<Location>> = MutableLiveData()
     private var startPoint: LatLng? = null
     private var endPoint: LatLng? = null
     private var mapRoute: MapRoute? = null
@@ -35,7 +32,6 @@ class MapViewModel : ViewModel() {
     private var destinationMarker: MapMarker? = null
     private var addressStart: String? = null
     private var addressDestination: String? = null
-
     private lateinit var map: Map
 
     init {
@@ -45,12 +41,7 @@ class MapViewModel : ViewModel() {
         addressDestination = "Hanoi"
         resultWayShort.value = ""
         resultOtherWay.value = ""
-//        myLocationMarker.value = null
-//        destinationMarker.value = null
         transport.value = 0
-//        startPoint.value = null
-//        endPoint.value = null
-//        vmListSearch.value = mutableListOf()
         mapRouteList.value = ArrayList()
     }
 
@@ -67,6 +58,7 @@ class MapViewModel : ViewModel() {
                 map.zoomLevel = level
                 if (destinationMarker == null) {
                     addDestinationMarker(MainActivity.latHN, MainActivity.lngHN)
+                    addressDestination = "lat/lng: (${MainActivity.latHN},${MainActivity.lngHN})\n$addressDestination"
                 }
                 mapFragment.mapGesture!!.addOnGestureListener(object :
                     MapGesture.OnGestureListener.OnGestureListenerAdapter() {
@@ -132,7 +124,6 @@ class MapViewModel : ViewModel() {
 
     //search location by string
     fun searchLocation(query: String) {
-//    fun searchLocation(query: String, map: Map) {
         val hanoi = GeoCoordinate(MainActivity.latHN, MainActivity.lngHN)
         val request = GeocodeRequest(query).setSearchArea(hanoi, 1000)
         request.execute { results, error ->
@@ -156,7 +147,6 @@ class MapViewModel : ViewModel() {
     }
 
     fun addDestinationMarker(lat: Double, lng: Double) {
-//    fun addDestinationMarker(lat: Double, lng: Double, map: Map) {
         if (destinationMarker != null) {
             map.removeMapObject(destinationMarker!!)
         }
@@ -167,9 +157,8 @@ class MapViewModel : ViewModel() {
     }
 
     fun addMyLocationMarker(lat: Double, lng: Double) {
-//    fun addMyLocationMarker(lat: Double, lng: Double, map: Map) {
-        if (destinationMarker != null) {
-            map.removeMapObject(destinationMarker!!)
+        if (myLocationMarker != null) {
+            map.removeMapObject(myLocationMarker!!)
         }
         startPoint = LatLng(lat, lng)
         myLocationMarker = MapMarker(GeoCoordinate(lat, lng))
@@ -178,7 +167,6 @@ class MapViewModel : ViewModel() {
     }
 
     fun cleanWay() {    //remove old route
-//    fun cleanWay(map: Map) {    //remove old route
         if (mapRouteList.value!!.isNotEmpty()) {
             map.removeMapObjects(mapRouteList.value!!)
             mapRouteList.value?.clear()
@@ -186,21 +174,19 @@ class MapViewModel : ViewModel() {
     }
 
     fun reversePosition() {
-//    fun reversePosition(map: Map) {
+        destinationMarker?.let { map.removeMapObject(it) }
+        myLocationMarker?.let { map.removeMapObject(it) }
         val mid = endPoint
         endPoint = startPoint
         startPoint = mid
         val string = addressDestination
         addressDestination = addressStart
         addressStart = string
-        destinationMarker?.let { map.removeMapObject(it) }
-        myLocationMarker?.let { map.removeMapObject(it) }
         addMyLocationMarker(startPoint!!.latitude, startPoint!!.longitude)
         addDestinationMarker(endPoint!!.latitude, endPoint!!.longitude)
     }
 
     fun createRoute(count: Int, context: Context) {
-//    fun createRoute(count: Int, map: Map, context: Context) {
         val routePlan = RoutePlan()
         routePlan.addWaypoint(
             RouteWaypoint(
@@ -219,10 +205,10 @@ class MapViewModel : ViewModel() {
             )
         )
         val routeOptions = RouteOptions()
-        if (MainActivity.mMainViewModel!!.transport.value == 0) {
+        if (transport.value == 0) {
             routeOptions.transportMode = RouteOptions.TransportMode.CAR
         } else {
-            if (MainActivity.mMainViewModel!!.transport.value == 1) {
+            if (transport.value == 1) {
                 routeOptions.transportMode = RouteOptions.TransportMode.BICYCLE
             } else {
                 routeOptions.transportMode = RouteOptions.TransportMode.PEDESTRIAN

@@ -34,10 +34,9 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_CODE_LOCATION_PERMISSION = 1
         const val latHN: Double = 21.03549853898585
         const val lngHN: Double = 105.83270413801074
-        var mMainViewModel: MapViewModel? = null
     }
-//
-//    private lateinit var map: Map
+
+    var mMainViewModel: MapViewModel? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,10 +78,10 @@ class MainActivity : AppCompatActivity() {
             }
         })
         map_tvAddress.text = map_tvAddress.text
-        mMainViewModel!!.resultWayShort.observe(this,{
+        mMainViewModel!!.resultWayShort.observe(this, {
             way_shortest.text = it
         })
-        mMainViewModel!!.resultOtherWay.observe(this,{
+        mMainViewModel!!.resultOtherWay.observe(this, {
             way_other.text = it
         })
     }
