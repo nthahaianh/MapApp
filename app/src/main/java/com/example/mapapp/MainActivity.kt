@@ -21,11 +21,8 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModelProviders
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.here.android.mpa.common.GeoCoordinate
 import com.here.android.mpa.common.OnEngineInitListener
 import com.here.android.mpa.mapping.*
-import com.here.android.mpa.mapping.Map
-import com.here.android.mpa.mapping.MapGesture.OnGestureListener.OnGestureListenerAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 
 @SuppressLint("SetTextI18n")
@@ -36,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         const val lngHN: Double = 105.83270413801074
     }
 
-    var mMainViewModel: MapViewModel? = null
+    lateinit var mMainViewModel: MapViewModel
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,48 +49,48 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setUpViewModel() {
-        mMainViewModel!!.isShowAddress.observe(this, {
+        mMainViewModel.isShowAddress.observe(this, {
             if (it)
                 map_llAddress.visibility = View.VISIBLE
             else
                 map_llAddress.visibility = View.GONE
         })
-        mMainViewModel!!.isShowWay.observe(this, {
+        mMainViewModel.isShowWay.observe(this, {
             if (it)
                 scrollView.visibility = View.VISIBLE
             else
                 scrollView.visibility = View.GONE
         })
-        mMainViewModel!!.isShowSearch.observe(this, {
+        mMainViewModel.isShowSearch.observe(this, {
             if (it)
                 map_llSearch.visibility = View.VISIBLE
             else
                 map_llSearch.visibility = View.GONE
         })
-        mMainViewModel!!.transport.observe(this, {
+        mMainViewModel.transport.observe(this, {
             when (it) {
                 0 -> tvTransport.text = "Transport: Car"
                 1 -> tvTransport.text = "Transport: Bicycle"
                 2 -> tvTransport.text = "Transport: Pedestrian"
             }
         })
-        mMainViewModel!!.resultAddress.observe(this,{
+        mMainViewModel.resultAddress.observe(this, {
             map_tvAddress.text = it
         })
-        mMainViewModel!!.resultWayShort.observe(this, {
+        mMainViewModel.resultWayShort.observe(this, {
             way_shortest.text = it
         })
-        mMainViewModel!!.resultOtherWay.observe(this, {
+        mMainViewModel.resultOtherWay.observe(this, {
             way_other.text = it
         })
     }
 
     private fun setUpView() {
         map_ivNavigation.setOnClickListener {
-            mMainViewModel!!.isShowAddress.value = false
-            mMainViewModel!!.isShowSearch.value = false
-            mMainViewModel!!.isShowWay.value = false
-            if (mMainViewModel!!.getAddressStart() == null) {
+            map_llAddress.visibility = View.GONE
+            map_llSearch.visibility = View.GONE
+            scrollView.visibility = View.GONE
+            if (mMainViewModel.getAddressStart() == null) {
                 Toast.makeText(baseContext, "Please get current position", Toast.LENGTH_SHORT)
                     .show()
             } else {
@@ -101,27 +98,27 @@ class MainActivity : AppCompatActivity() {
             }
         }
         map_ivSearch.setOnClickListener {
-            mMainViewModel!!.isShowAddress.value = false
-            mMainViewModel!!.isShowSearch.value = true
-            mMainViewModel!!.isShowWay.value = false
+            map_llAddress.visibility = View.GONE
+            map_llSearch.visibility = View.VISIBLE
+            scrollView.visibility = View.GONE
         }
         map_btnSearch.setOnClickListener {
             if (map_etSearch.text.toString() == "") {
                 Toast.makeText(baseContext, "Address is empty", Toast.LENGTH_SHORT).show()
             } else {
                 if (checkConnectivity()) {
-                    mMainViewModel!!.isShowAddress.value = false
-                    mMainViewModel!!.isShowSearch.value = false
-                    mMainViewModel!!.isShowWay.value = false
-                    mMainViewModel!!.cleanWay()
-                    mMainViewModel!!.searchLocation(map_etSearch.text.toString())
+                    map_llAddress.visibility = View.GONE
+                    map_llSearch.visibility = View.GONE
+                    scrollView.visibility = View.GONE
+                    mMainViewModel.cleanWay()
+                    mMainViewModel.searchLocation(map_etSearch.text.toString())
                 }
             }
         }
         map_ivMyLocation.setOnClickListener {
-            mMainViewModel!!.isShowAddress.value = false
-            mMainViewModel!!.isShowSearch.value = false
-            mMainViewModel!!.isShowWay.value = false
+            map_llAddress.visibility = View.GONE
+            map_llSearch.visibility = View.GONE
+            scrollView.visibility = View.GONE
             getCurrentUserLocation()
         }
     }
@@ -129,7 +126,30 @@ class MainActivity : AppCompatActivity() {
     private fun setUpMap() {
         var mapFragment: AndroidXMapFragment =
             supportFragmentManager.findFragmentById(R.id.mapfragment) as AndroidXMapFragment
-        mMainViewModel!!.initMap(mapFragment)
+        initMap(mapFragment)
+    }
+
+    private fun initMap(mapFragment: AndroidXMapFragment) {
+        mapFragment.init { error ->
+            if (error == OnEngineInitListener.Error.NONE) {
+                var map = mapFragment.map!!
+                mMainViewModel.createMap(map)
+                mapFragment.mapGesture!!.addOnGestureListener(object :
+                    MapGesture.OnGestureListener.OnGestureListenerAdapter() {
+                    override fun onTapEvent(p: PointF): Boolean {
+                        mMainViewModel.onPressOnMap(p)
+                        return false
+                    }
+
+                    override fun onLongPressEvent(p: PointF): Boolean {
+                        mMainViewModel.onPressOnMap(p)
+                        return false
+                    }
+                }, 3, true)
+            } else {
+                Log.e("map-error", "init error")
+            }
+        }
     }
 
     // Check internet
@@ -206,8 +226,8 @@ class MainActivity : AppCompatActivity() {
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location ->
                 if (location != null) {
-                    mMainViewModel!!.setAddressStart("lat/lng: (${location.latitude},${location.longitude})\nYour position")
-                    mMainViewModel!!.addMyLocationMarker(location.latitude, location.longitude)
+                    mMainViewModel.setAddressStart("lat/lng: (${location.latitude},${location.longitude})\nYour position")
+                    mMainViewModel.addMyLocationMarker(location.latitude, location.longitude)
                 } else {
                     Log.e("HEREmap", "My location null")
                 }
@@ -217,9 +237,9 @@ class MainActivity : AppCompatActivity() {
     //Draw the way
     private fun createRoute(count: Int) {
         if (count == 1) {
-            mMainViewModel!!.createRoute(count, this)
+            mMainViewModel.createRoute(count, this)
         } else {
-            mMainViewModel!!.createRoute(count, this)
+            mMainViewModel.createRoute(count, this)
         }
     }
 
@@ -257,24 +277,24 @@ class MainActivity : AppCompatActivity() {
                 parent: AdapterView<*>,
                 view: View, position: Int, id: Long
             ) {
-                mMainViewModel!!.transport.value = position
+                mMainViewModel.transport.value = position
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
-                mMainViewModel!!.transport.value = 0
+                mMainViewModel.transport.value = 0
             }
         }
-        tvStart.text = "${mMainViewModel!!.getAddressStart()}"
-        tvEnd.text = "${mMainViewModel!!.getAddressDestination()}"
+        tvStart.text = "${mMainViewModel.getAddressStart()}"
+        tvEnd.text = "${mMainViewModel.getAddressDestination()}"
 
         ivChange.setOnClickListener {   //change 2 position
-            mMainViewModel!!.reversePosition()
-            tvStart.text = "${mMainViewModel!!.getAddressStart()}"
-            tvEnd.text = "${mMainViewModel!!.getAddressDestination()}"
+            mMainViewModel.reversePosition()
+            tvStart.text = "${mMainViewModel.getAddressStart()}"
+            tvEnd.text = "${mMainViewModel.getAddressDestination()}"
         }
         btnCancel.setOnClickListener { dialog.dismiss() }
         btnOk.setOnClickListener {
-            mMainViewModel!!.cleanWay()
+            mMainViewModel.cleanWay()
             createRoute(0)
             createRoute(1)
             dialog.dismiss()

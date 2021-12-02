@@ -9,7 +9,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.android.gms.maps.model.LatLng
 import com.here.android.mpa.common.GeoCoordinate
-import com.here.android.mpa.common.OnEngineInitListener
 import com.here.android.mpa.mapping.*
 import com.here.android.mpa.mapping.Map
 import com.here.android.mpa.routing.*
@@ -47,52 +46,32 @@ class MapViewModel : ViewModel() {
         mapRouteList.value = ArrayList()
     }
 
-    fun initMap(mapFragment: AndroidXMapFragment) {
-        mapFragment.init { error ->
-            if (error == OnEngineInitListener.Error.NONE) {
-                map = mapFragment.map!!
-                map.projectionMode = Map.Projection.MERCATOR
-                map.setCenter(
-                    GeoCoordinate(MainActivity.latHN, MainActivity.lngHN),
-                    Map.Animation.NONE
-                )
-                val level: Double = map.maxZoomLevel / 1.5                // Set the zoom level
-                map.zoomLevel = level
-                if (destinationMarker == null) {
-                    addDestinationMarker(MainActivity.latHN, MainActivity.lngHN)
-                    addressDestination = "lat/lng: (${MainActivity.latHN},${MainActivity.lngHN})\n$addressDestination"
-                }
-                mapFragment.mapGesture!!.addOnGestureListener(object :
-                    MapGesture.OnGestureListener.OnGestureListenerAdapter() {
-                    override fun onTapEvent(p: PointF): Boolean {
-                        cleanWay()
-                        val position = map.pixelToGeo(p)
-                        if (position != null) {
-                            addDestinationMarker(
-                                position.latitude,
-                                position.longitude
-                            )
-                            changeGeotoAdd(position)
-                        }
-                        return false
-                    }
+    fun createMap(map: Map) {
+        this.map = map
+        map.projectionMode = Map.Projection.MERCATOR
+        map.setCenter(
+            GeoCoordinate(MainActivity.latHN, MainActivity.lngHN),
+            Map.Animation.NONE
+        )
+        val level: Double = map.maxZoomLevel / 1.5        // Set the zoom level
+        map.zoomLevel = level
+        if (destinationMarker == null) {
+            addDestinationMarker(MainActivity.latHN, MainActivity.lngHN)
+            addressDestination =
+                "lat/lng: (${MainActivity.latHN},${MainActivity.lngHN})\n" +
+                        "$addressDestination"
+        }
+    }
 
-                    override fun onLongPressEvent(p: PointF): Boolean {
-                        cleanWay()
-                        val position = map.pixelToGeo(p)
-                        if (position != null) {
-                            addDestinationMarker(
-                                position.latitude,
-                                position.longitude
-                            )
-                            changeGeotoAdd(position)
-                        }
-                        return false
-                    }
-                }, 3, true)
-            } else {
-                Log.e("map-error", "init error")
-            }
+    fun onPressOnMap(p: PointF) {
+        cleanWay()
+        val position = map.pixelToGeo(p)
+        if (position != null) {
+            addDestinationMarker(
+                position.latitude,
+                position.longitude
+            )
+            changeGeotoAdd(position)
         }
     }
 
@@ -190,22 +169,19 @@ class MapViewModel : ViewModel() {
     fun createRoute(count: Int, context: Context) {
         val routePlan = RoutePlan()
         routePlan.addWaypoint(
-            RouteWaypoint(
-                GeoCoordinate(
-                    startPoint!!.latitude,
-                    startPoint!!.longitude
-                )
-            )
+            RouteWaypoint(GeoCoordinate(startPoint!!.latitude, startPoint!!.longitude))
         )
         routePlan.addWaypoint(
-            RouteWaypoint(
-                GeoCoordinate(
-                    endPoint!!.latitude,
-                    endPoint!!.longitude
-                )
-            )
+            RouteWaypoint(GeoCoordinate(endPoint!!.latitude, endPoint!!.longitude))
         )
         val routeOptions = RouteOptions()
+        setUpRouteOptions(routeOptions, count)
+        routePlan.routeOptions = routeOptions
+
+        createTheWay(routePlan, count, context)
+    }
+
+    private fun setUpRouteOptions(routeOptions: RouteOptions, count: Int) {
         if (transport.value == 0) {
             routeOptions.transportMode = RouteOptions.TransportMode.CAR
         } else {
@@ -220,8 +196,9 @@ class MapViewModel : ViewModel() {
         } else {
             routeOptions.routeType = RouteOptions.Type.FASTEST
         }
-        routePlan.routeOptions = routeOptions
+    }
 
+    private fun createTheWay(routePlan: RoutePlan, count: Int, context: Context) {
         val mRouter = CoreRouter()
         mRouter.calculateRoute(routePlan,
             object : Router.Listener<List<RouteResult>, RoutingError> {
@@ -234,28 +211,8 @@ class MapViewModel : ViewModel() {
                 ) {
                     if (routingError == RoutingError.NONE) {
                         val route = routeResults[0].route
-                        mapRoute = MapRoute(route)
-                        if (count == 1) {
-                            mapRoute!!.color = Color.RED
-                        } else {
-                            mapRoute!!.color = Color.GREEN
-                        }
-                        mapRouteList.value?.add(mapRoute!!)
-                        map.addMapObject(mapRoute!!)
-                        map.setCenter(
-                            GeoCoordinate(startPoint!!.latitude, startPoint!!.longitude),
-                            Map.Animation.NONE
-                        )
-                        map.zoomLevel = map.maxZoomLevel / 1.4f
-                        var result =
-                            "Time: ${formatTime(route.getTtaExcludingTraffic(Route.WHOLE_ROUTE)!!.duration)}\n"
-                        result += "Distance: ${mapRoute!!.route!!.length / 1000.0}km\n"
-                        Log.e("infoOfWay", result)
-                        if (count == 1) {
-                            resultWayShort.value = result
-                        } else {
-                            resultOtherWay.value = result
-                        }
+                        drawRoute(route, count)
+                        getResultOfWay(route, count)
                         isShowWay.value = true
                     } else {
                         Log.e("infor", "onCalculateRouteFinished: $routingError")
@@ -264,6 +221,33 @@ class MapViewModel : ViewModel() {
                     }
                 }
             })
+    }
+
+    private fun getResultOfWay(route: Route, count: Int) {
+        var result =
+            "Time: ${formatTime(route.getTtaExcludingTraffic(Route.WHOLE_ROUTE)!!.duration)}\n"
+        result += "Distance: ${mapRoute!!.route!!.length / 1000.0}km\n"
+        if (count == 1) {
+            resultWayShort.value = result
+        } else {
+            resultOtherWay.value = result
+        }
+    }
+
+    private fun drawRoute(route: Route, count: Int) {
+        mapRoute = MapRoute(route)
+        if (count == 1) {
+            mapRoute!!.color = Color.RED
+        } else {
+            mapRoute!!.color = Color.GREEN
+        }
+        mapRouteList.value?.add(mapRoute!!)
+        map.addMapObject(mapRoute!!)
+        map.setCenter(
+            GeoCoordinate(startPoint!!.latitude, startPoint!!.longitude),
+            Map.Animation.NONE
+        )
+        map.zoomLevel = map.maxZoomLevel / 1.4f
     }
 
     private fun formatTime(string: Int): String {
@@ -277,7 +261,7 @@ class MapViewModel : ViewModel() {
             result += "${hours}h "
         }
         if (minutes > 0) {
-            result += " ${minutes}min"
+            result += "${minutes}min "
         }
         return result
     }
